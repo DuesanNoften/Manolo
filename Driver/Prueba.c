@@ -5,8 +5,6 @@
 #include <linux/tty_driver.h>
 #include <linux/tty_flip.h>
 #include <linux/slab.h>
-#include <linux/fs.h>
-#include <linux/uaccess.h>
 
 static struct usb_device *device = NULL;
 static struct tty_driver *tty_driver;
@@ -20,7 +18,7 @@ static int cdc_acm_send_message(const char *message) {
         return -ENODEV;
     }
 
-    retval = usb_bulk_msg(device, usb_sndbulkpipe(device, 0x04), (void *)message, message_length, &message_length, 15000);
+    retval = usb_bulk_msg(device, usb_sndbulkpipe(device, 0x04), (void *)message, message_length, &message_length, 10000);
     if (retval) {
         printk(KERN_ERR "cdc_acm: Failed to send message, error %d\n", retval);
         return retval;
@@ -30,15 +28,6 @@ static int cdc_acm_send_message(const char *message) {
     return 0;
 }
 
-static ssize_t message_store(const struct class *class, const struct class_attribute *attr, const char *buf, size_t count) {
-    cdc_acm_send_message(buf);
-    return count;
-}
-
-CLASS_ATTR_WO(message);
-
-static struct class *cdc_acm_class;
-
 static int cdc_acm_probe(struct usb_interface *interface, const struct usb_device_id *id) {
     if (device) {
         printk(KERN_ERR "cdc_acm: Device already in use\n");
@@ -46,7 +35,9 @@ static int cdc_acm_probe(struct usb_interface *interface, const struct usb_devic
     }
     device = interface_to_usbdev(interface);
     printk(KERN_INFO "cdc_acm: Arduino Uno (%04X:%04X) plugged\n", id->idVendor, id->idProduct);
-    cdc_acm_send_message("1");   
+    cdc_acm_send_message("1");
+    device = NULL;
+    printk(KERN_INFO "cdc_acm: Arduino Uno removed\n");
     return 0;
 }
 
@@ -150,19 +141,6 @@ static int __init cdc_acm_init(void) {
         return result;
     }
 
-    cdc_acm_class = class_create("cdc_acm");
-    if (IS_ERR(cdc_acm_class)) {
-        printk(KERN_ERR "cdc_acm: Failed to create class\n");
-        return PTR_ERR(cdc_acm_class);
-    }
-
-    result = class_create_file(cdc_acm_class, &class_attr_message);
-    if (result) {
-        printk(KERN_ERR "cdc_acm: Failed to create sysfs file\n");
-        class_destroy(cdc_acm_class);
-        return result;
-    }
-
     return 0;
 }
 
@@ -171,8 +149,6 @@ static void __exit cdc_acm_exit(void) {
     usb_deregister(&cdc_acm_driver);
     tty_unregister_driver(tty_driver);
     tty_driver_kref_put(tty_driver);
-    class_remove_file(cdc_acm_class, &class_attr_message);
-    class_destroy(cdc_acm_class);
 }
 
 module_init(cdc_acm_init);

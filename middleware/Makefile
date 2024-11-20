@@ -1,5 +1,5 @@
-obj-m := arduino_driver.o
-obj-y := libarduino_driver.a
+obj-m := Prueba.o  # Kernel module object
+obj-y := libprueba.a    # Static library to be included in the kernel module
 
 all:
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
