@@ -1,1 +1,1 @@
-gcc -o user_program user_program.c -L. -lprueba
+ -o master master.c -L. -lmiddleware
