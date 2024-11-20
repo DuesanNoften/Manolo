@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-    const char *file_path = "/mnt/c/Users/JuanDa/Documents/SEMESTRES/2024IIS/PSO/Manolo/input.txt";
+    const char *file_path = "input.txt";
     FILE *file = fopen(file_path, "rb");
 
     if (file == NULL) {
