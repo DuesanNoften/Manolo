@@ -1,9 +1,28 @@
-obj-m := Prueba.o  # Kernel module object
-obj-y := libprueba.a    # Static library to be included in the kernel module
+# Compiler and flags
+CC = gcc
+CFLAGS = -Wall -g
 
-all:
-	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
-    
+# Output library name
+LIBRARY = libmiddleware.a
+
+# Source files
+SRC = middleware.c
+
+# Object files
+OBJ = middleware.o
+
+# Rule to create the static library
+$(LIBRARY): $(OBJ)
+	ar rcs $(LIBRARY) $(OBJ)
+
+# Rule to compile prueba.c into prueba.o
+$(OBJ): $(SRC)
+	$(CC) $(CFLAGS) -c $(SRC)
+
+# Clean rule to remove generated files
 clean:
-	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
+	rm -f $(OBJ) $(LIBRARY)
+
+# Phony targets (not actual files)
+.PHONY: clean
 
