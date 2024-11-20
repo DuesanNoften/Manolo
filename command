@@ -1,0 +1,1 @@
+ -o master master.c -L. -lmiddleware
