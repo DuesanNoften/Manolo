@@ -6,7 +6,6 @@
 #define NUM_WORDS 8192
 #define WORD_LENGTH 24
 
-// This function applies the ROT13 cipher to the buffer
 void applyROT13(char *message) {
     char *ptr = message;
     while (*ptr != '\0') {
@@ -20,7 +19,6 @@ void applyROT13(char *message) {
     }
 }
 
-// This function counts the words in the buffer
 void countWords(char *buffer, char words[][WORD_LENGTH], int counts[]) {
     char word[WORD_LENGTH];
     int index = 0, offset = 0;
@@ -28,8 +26,7 @@ void countWords(char *buffer, char words[][WORD_LENGTH], int counts[]) {
     memset(counts, 0, sizeof(counts[0]) * NUM_WORDS);
 
     while (sscanf(buffer + offset, "%23s%n", word, &index) == 1) {
-        // The buffer message is decrypted using the ROT13 cipher
-        applyROT13(word);
+        applyROT13(word); // Descifrado ROT13
         for (int i = 0; i < NUM_WORDS; i++) {
             if (strcmp(words[i], word) == 0) {
                 counts[i]++;
@@ -46,10 +43,6 @@ void countWords(char *buffer, char words[][WORD_LENGTH], int counts[]) {
     }
 }
 
-// Main function
-// The program reads a file and divides it into two buffers
-// The Slave process counts the words in the first buffer
-// The Slave1 process counts the words in the second buffer
 int main(int argc, char *argv[]) {
     int rank, size;
     MPI_Init(&argc, &argv);
@@ -65,7 +58,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    // Divides the file into two buffers
+    // Divide el archivo en dos buffers
     fseek(file, 0, SEEK_END);
     long file_size = ftell(file);
     long half_size = file_size / 2;
@@ -79,21 +72,22 @@ int main(int argc, char *argv[]) {
     bufferB[file_size - half_size] = '\0';
     fclose(file);
 
-    //Distibutes the buffers to the Slave processes
+    // Cifrar el contenido del bufferB antes de enviarlo
+    applyROT13(bufferA);
+    applyROT13(bufferB);
+
+    // Distribuye el procesamiento entre el Master y el Slave
     char words[NUM_WORDS][WORD_LENGTH];
     int counts[NUM_WORDS] = {0};
-    // The master sends the first buffer to the Slave process
     if (rank == 0) {
         countWords(bufferA, words, counts);
         MPI_Send(bufferB, strlen(bufferB) + 1, MPI_CHAR, 1, 0, MPI_COMM_WORLD);
-        // The master sends the results to the Slave1 process
     } else if (rank == 1) {
         MPI_Recv(bufferB, file_size - half_size + 1, MPI_CHAR, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         countWords(bufferB, words, counts);
         MPI_Send(counts, NUM_WORDS, MPI_INT, 0, 1, MPI_COMM_WORLD);
     }
 
-    // The master receives the results from the Slave process
     if (rank == 0) {
         int counts_slave[NUM_WORDS];
         MPI_Recv(counts_slave, NUM_WORDS, MPI_INT, 1, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
@@ -107,9 +101,9 @@ int main(int argc, char *argv[]) {
             if (counts[i] > counts[maxIndex]) maxIndex = i;
         }
         printf("Trend word is: %s with %d repetitions.\n", words[maxIndex], counts[maxIndex]);
+        send_message_to_kernel(words[maxIndex], counts[maxIndex]);
     }
 
-    // Free memory and finalize MPI
     free(bufferA);
     free(bufferB);
     MPI_Finalize();
